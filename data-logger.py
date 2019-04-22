@@ -1,6 +1,6 @@
 import serial
 import time
-serial_port = '/dev/cu.usbserial-DN035LY4';
+serial_port = '/dev/cu.usbserial-DN035LY4' # rename to your serial port
 baud_rate = 9600; #In arduino, Serial.begin(baud_rate)
 #yearstr = time.strftime("%Y")
 #monthstr = time.strftime("%m")
