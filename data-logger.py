@@ -1,14 +1,13 @@
 import serial
 import time
 serial_port = '/dev/cu.usbserial-DN035LY4' # rename to your serial port
-baud_rate = 9600; #In arduino, Serial.begin(baud_rate)
+baud_rate = 38400; #In arduino, Serial.begin(baud_rate)
 #yearstr = time.strftime("%Y")
 #monthstr = time.strftime("%m")
 #daystr = time.strftime("%d")
 #minstr = time.strftime("%M")
 timestr = time.strftime("%Y-%m-%d")
 write_to_file_path = timestr + ".txt"
-
 output_file = open(write_to_file_path, "a+")
 while (True):
     try:
@@ -21,7 +20,7 @@ while (True):
             output_file.write(line);
         else:
             timestr = newtimestr
-            write_to_file_path = newminstr + ".txt"
+            write_to_file_path = timestr + ".txt"
             output_file = open(write_to_file_path, "a+")
     except:
         #        print("Please reconnect USB")
