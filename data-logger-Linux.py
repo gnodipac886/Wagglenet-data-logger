@@ -1,5 +1,6 @@
 import serial
 import time
+SN = "DN042K2B"
 from serial.tools.list_ports import comports
 a=list(comports())
 i = 0
@@ -12,7 +13,7 @@ while (True):
         else:
             i = i+1
             continue
-    elif "DN042K2B" in a[i].serial_number:
+    elif SN in a[i].serial_number:
         break
     else:
         i = i+1
@@ -58,7 +59,7 @@ while (True):
                 else:
                     i = i+1
                     continue
-            elif "DN042K2B" in a[i].serial_number:
+            elif SN in a[i].serial_number:
                 break
             else:
                 i = i+1
