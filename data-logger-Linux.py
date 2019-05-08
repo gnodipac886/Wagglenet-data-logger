@@ -1,69 +1,83 @@
+from serial.tools.list_ports import comports
+from sys import exit
 import serial
 import time
-SN = "DN042K2B"
-from serial.tools.list_ports import comports
-a=list(comports())
-i = 0
-while (True):
-    a=list(comports())
-    if a[i].serial_number == None:
-        if i == len(a)-1:
-            i = 0
+import argparse
+
+parser = argparse.ArgumentParser(
+    description='Log Serial data stream into files.')
+parser.add_argument(
+    '--sn', dest='sn', nargs=1, help='Serial number of USB device.')
+parser.add_argument(
+    '--vid', dest='vid', nargs=1, help='Vendor ID of the device.', type=int)
+parser.add_argument(
+    '--pid', dest='pid', nargs=1, help='Product ID of the device.', type=int)
+parser.add_argument(
+    '--port', dest='port', nargs=1, help='Port Address of the device',
+)
+parser.add_argument(
+    '--baud', dest='baud', nargs=1, help='Baud rate of the connection',
+    type=int, default=115200)
+
+
+def find_device(sn=None, vid=None, pid=None, port=None):
+    if sn is None and vid is None and pid is None and port is None:
+        raise ValueError('At least specify one of the filters.')
+    for port in comports():
+        if sn is not None and port.serial_number != port[0]:
             continue
-        else:
-            i = i+1
+        if vid is not None and port.vid != vid[0]:
             continue
-    elif SN in a[i].serial_number:
-        break
-    else:
-        i = i+1
-serial_port = a[i].device # rename to your serial port
-baud_rate = 38400; #In arduino, Serial.begin(baud_rate)
-#yearstr = time.strftime("%Y")
-#monthstr = time.strftime("%m")
-#daystr = time.strftime("%d")
-#minstr = time.strftime("%M")
+        if pid is not None and port.pid != pid[0]:
+            continue
+        if port is not None and port.device != port[0]:
+            continue
+        return port.device
+    return None
+
+
+args = parser.parse_args()
+serial_port = find_device(args.sn, args.vid, args.pid, args.port)
+baud_rate = args.baud
+
+if serial_port is None:
+    print('No serial port that matches your spec exists!')
+    exit(1)
+
+print('Now recording from %s at baud %d' % (serial_port, baud_rate))
+
 timestr = time.strftime("%Y-%m-%d")
 write_to_file_path = timestr + ".txt"
 output_file = open(write_to_file_path, "a+")
-while (True):
-    try:
-        newtimestr = time.strftime("%Y-%m-%d")
-        if (timestr == newtimestr):
-            ser = serial.Serial(serial_port, baud_rate)
-            line1 = ser.readline();
-            line1 = line1.decode("utf-8") #ser.readline returns a binary, convert to string
-            line2 = ser.readline();
-            line2 = line2.decode("utf-8") #ser.readline returns a binary, convert to string
-            line3 = ser.readline();
-            line3 = line3.decode("utf-8") #ser.readline returns a binary, convert to string
-            print(line1)
-            print(line2)
-            print(line3)
-            output_file.write(line1)
-            output_file.write(line2)
-            output_file.write(line3)
-        else:
-            timestr = newtimestr
-            write_to_file_path = timestr + ".txt"
-            output_file = open(write_to_file_path, "a+")
-    except:
-        #print("Please reconnect USB")
-        i = 0
-        while (True):
-            a=list(comports())
-            if a[i].serial_number == None:
-                if i == len(a)-1:
-                    i = 0
-                    continue
-                else:
-                    i = i+1
-                    continue
-            elif SN in a[i].serial_number:
-                break
-            else:
-                i = i+1
-        serial_port = a[i].device
-        continue
-        #time.sleep(0)
+ser = serial.Serial(serial_port, baud_rate)
 
+try:
+    while (True):
+        try:
+            newtimestr = time.strftime("%Y-%m-%d")
+            if (timestr == newtimestr):
+                line = ser.readline().decode('utf-8')
+                output_file.write(line)
+            else:
+                if not output_file.closed:
+                    output_file.close()
+                timestr = newtimestr
+                write_to_file_path = timestr + ".txt"
+                output_file = open(write_to_file_path, "a+")
+        except Exception:
+            print("Connection is severed. Waiting for reconnect.")
+            # Must close the port before moving on
+            if not ser.closed:
+                ser.close()
+            serial_port = None
+            # Wait until a new port is found
+            while (serial_port is None):
+                serial_port = find_device(
+                    args.sn, args.vid, args.pid, args.port)
+                time.sleep(2)
+            print('Device is found! Address = %s' % serial_port)
+            ser = serial.Serial(serial_port, baud_rate)
+
+except KeyboardInterrupt:
+    if not output_file.closed:
+        output_file.close()
